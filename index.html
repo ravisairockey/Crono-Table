@@ -34,7 +34,7 @@
       animation: breathe 5s ease-in-out infinite;
     }
     #layer-back    { background-image:url('images/back.jpg'); }
-    #layer-gears   { background-image:url('images/gears.png'); }
+    #layer-gears   { background-image:url('images/gears.png'); background-size: contain; background-repeat: no-repeat; }
     #layer-astrol  { background-image:url('images/back.jpg'); }
     #layer-hands   { z-index:5; }
     .hand {
@@ -114,128 +114,140 @@
   </div>
 
   <!-- Three.js + OrbitControls from CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/three@0.159.0/build/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.159.0/examples/js/controls/OrbitControls.js"></script>
-  <script>
-  // --- Three.js Scene Setup ---
-  const container = document.getElementById('three-container');
-  const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera( 60, window.innerWidth/window.innerHeight, 0.1, 2000 );
-  camera.position.set(0, 0, 400);
-
-  const renderer = new THREE.WebGLRenderer({ antialias:true });
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  container.appendChild(renderer.domElement);
-
-  const controls = new THREE.OrbitControls( camera, renderer.domElement );
-
-  // Ambient glow
-  scene.add( new THREE.AmbientLight(0x888888) );
-
-  // Starfield (Points)
-  {
-    const starGeo = new THREE.BufferGeometry();
-    const count = 2000;
-    const positions = new Float32Array(count * 3);
-    for(let i=0; i<count*3; i++){
-      positions[i] = (Math.random() - 0.5) * 2000;
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.159.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.159.0/examples/jsm/"
+      }
     }
-    starGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    const material = new THREE.PointsMaterial({ color:0xffffff, size:2, opacity:0.8, transparent:true });
-    const stars = new THREE.Points(starGeo, material);
-    scene.add(stars);
-  }
+  </script>
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    // --- Three.js Scene Setup ---
+    const container = document.getElementById('three-container');
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera( 60, window.innerWidth/window.innerHeight, 0.1, 2000 );
+    camera.position.set(0, 0, 400);
 
-  // Ember particles (sprite billboards)
-  {
-    const texture = new THREE.TextureLoader().load('https://threejs.org/examples/textures/sprites/spark1.png');
-    const emberGeo = new THREE.BufferGeometry();
-    const count = 500;
-    const pos = new Float32Array(count*3);
-    const sizes = new Float32Array(count);
-    for(let i=0; i<count; i++){
-      pos[3*i]   = (Math.random()-0.5)*1000;
-      pos[3*i+1] = -200 + Math.random()*400;
-      pos[3*i+2] = (Math.random()-0.5)*1000;
-      sizes[i] = 10 + Math.random()*10;
-    }
-    emberGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    emberGeo.setAttribute('size', new THREE.BufferAttribute(sizes,1));
-    const emberMat = new THREE.PointsMaterial({
-      map:texture,
-      blending:THREE.AdditiveBlending,
-      depthWrite:false,
-      transparent:true,
-      color:0xff6600
-    });
-    const embers = new THREE.Points(emberGeo, emberMat);
-    scene.add(embers);
-  }
-
-  // Animate Three.js scene
-  function animateBG(){
-    requestAnimationFrame(animateBG);
-    controls.update();
-    renderer.render(scene, camera);
-  }
-  animateBG();
-
-  // Handle resize
-  window.addEventListener('resize', ()=>{
-    camera.aspect = window.innerWidth/window.innerHeight;
-    camera.updateProjectionMatrix();
+    const renderer = new THREE.WebGLRenderer({ antialias:true, alpha: true });
+    renderer.setPixelRatio( window.devicePixelRatio );
     renderer.setSize(window.innerWidth, window.innerHeight);
-  });
+    container.appendChild(renderer.domElement);
 
-  // --- Clock & Timetable Logic ---
-  // Timetable data
-  const startMin = 6 * 60;
-  const activities = [
-    {n:'Wake up',dur:4.45},{n:'Tea drinking',dur:4.2},{n:'After tea chit chat',dur:13.72},
-    {n:'Restroom (dump)',dur:18.97},{n:'Learning',dur:157.82},{n:'Lunch + Anime/Games',dur:142.43},
-    {n:'Study + Movies/TV',dur:143.97},{n:'Study again',dur:130.0},{n:'Bath',dur:10.97},
-    {n:'Dinner',dur:86.97},{n:'Netflix and chill',dur:31.12},{n:'Play video games',dur:149.63}
-  ];
-  let offset = startMin;
-  const evC = document.getElementById('events');
-  activities.forEach(a=>{
-    a.start = offset; a.end = offset + a.dur;
-    const div = document.createElement('div');
-    div.className = 'event';
-    const sH = Math.floor(offset/60), sM=Math.floor(offset%60);
-    div.innerHTML = `<span class="time">${String(sH).padStart(2,'0')}:${String(sM).padStart(2,'0')}</span><span>${a.n}</span>`;
-    evC.appendChild(div);
-    a.el = div;
-    offset += a.dur;
-  });
+    const controls = new OrbitControls( camera, renderer.domElement );
+    controls.enableZoom = false;
+    controls.enablePan = false;
 
-  // Parallax for clock layers
-  const clockWrap = document.getElementById('clock-wrap');
-  const layers = clockWrap.querySelectorAll('.layer');
-  clockWrap.addEventListener('mousemove', e => {
-    const r = clockWrap.getBoundingClientRect();
-    const x = ((e.clientX - r.left)/r.width - 0.5)*2;
-    const y = ((e.clientY - r.top)/r.height - 0.5)*2;
-    layers.forEach((L,i)=>{
-      const d = (i+1)*4;
-      L.style.transform = `translate3d(${-x*d}vmin,${-y*d}vmin,0)`;
+
+    // Ambient glow
+    scene.add( new THREE.AmbientLight(0x888888) );
+
+    // Starfield (Points)
+    {
+      const starGeo = new THREE.BufferGeometry();
+      const count = 2000;
+      const positions = new Float32Array(count * 3);
+      for(let i=0; i<count*3; i++){
+        positions[i] = (Math.random() - 0.5) * 2000;
+      }
+      starGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+      const material = new THREE.PointsMaterial({ color:0xffffff, size:2, opacity:0.8, transparent:true });
+      const stars = new THREE.Points(starGeo, material);
+      scene.add(stars);
+    }
+
+    // Ember particles (sprite billboards)
+    {
+      const texture = new THREE.TextureLoader().load('https://threejs.org/examples/textures/sprites/spark1.png');
+      const emberGeo = new THREE.BufferGeometry();
+      const count = 500;
+      const pos = new Float32Array(count*3);
+      const sizes = new Float32Array(count);
+      for(let i=0; i<count; i++){
+        pos[3*i]   = (Math.random()-0.5)*1000;
+        pos[3*i+1] = -200 + Math.random()*400;
+        pos[3*i+2] = (Math.random()-0.5)*1000;
+        sizes[i] = 10 + Math.random()*10;
+      }
+      emberGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      emberGeo.setAttribute('size', new THREE.BufferAttribute(sizes,1));
+      const emberMat = new THREE.PointsMaterial({
+        map:texture,
+        blending:THREE.AdditiveBlending,
+        depthWrite:false,
+        transparent:true,
+        color:0xff6600
+      });
+      const embers = new THREE.Points(emberGeo, emberMat);
+      scene.add(embers);
+    }
+
+    // Animate Three.js scene
+    function animateBG(){
+      requestAnimationFrame(animateBG);
+      controls.update();
+      renderer.render(scene, camera);
+    }
+    animateBG();
+
+    // Handle resize
+    window.addEventListener('resize', ()=>{
+      camera.aspect = window.innerWidth/window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
     });
-  });
 
-  // Update clock hands & highlight
-  function update(){
-    const nowUTC = Date.now() + new Date().getTimezoneOffset()*60000;
-    const now = new Date(nowUTC + 19800000);
-    const h = now.getHours()%12, m = now.getMinutes(), s = now.getSeconds();
-    document.getElementById('hour').style.transform   = `rotate(${(h + m/60)*30}deg)`;
-    document.getElementById('minute').style.transform = `rotate(${(m + s/60)*6}deg)`;
-    document.getElementById('second').style.transform = `rotate(${s*6}deg)`;
+    // --- Clock & Timetable Logic ---
+    // Timetable data
+    const startMin = 6 * 60;
+    const activities = [
+      {n:'Wake up',dur:4.45},{n:'Tea drinking',dur:4.2},{n:'After tea chit chat',dur:13.72},
+      {n:'Restroom (dump)',dur:18.97},{n:'Learning',dur:157.82},{n:'Lunch + Anime/Games',dur:142.43},
+      {n:'Study + Movies/TV',dur:143.97},{n:'Study again',dur:130.0},{n:'Bath',dur:10.97},
+      {n:'Dinner',dur:86.97},{n:'Netflix and chill',dur:31.12},{n:'Play video games',dur:149.63}
+    ];
+    let offset = startMin;
+    const evC = document.getElementById('events');
+    activities.forEach(a=>{
+      a.start = offset; a.end = offset + a.dur;
+      const div = document.createElement('div');
+      div.className = 'event';
+      const sH = Math.floor(offset/60), sM=Math.floor(offset%60);
+      div.innerHTML = `<span class="time">${String(sH).padStart(2,'0')}:${String(sM).padStart(2,'0')}</span><span>${a.n}</span>`;
+      evC.appendChild(div);
+      a.el = div;
+      offset += a.dur;
+    });
 
-    const total = now.getHours()*60 + now.getMinutes() + s/60;
-    activities.forEach(a => a.el.classList.toggle('current', total >= a.start && total < a.end));
-  }
-  setInterval(update,1000);
-  update();
+    // Parallax for clock layers
+    const clockWrap = document.getElementById('clock-wrap');
+    const layers = clockWrap.querySelectorAll('.layer');
+    clockWrap.addEventListener('mousemove', e => {
+      const r = clockWrap.getBoundingClientRect();
+      const x = ((e.clientX - r.left)/r.width - 0.5)*2;
+      const y = ((e.clientY - r.top)/r.height - 0.5)*2;
+      layers.forEach((L,i)=>{
+        const d = (i+1)*4;
+        L.style.transform = `translate3d(${-x*d}vmin,${-y*d}vmin,0)`;
+      });
+    });
+
+    // Update clock hands & highlight
+    function update(){
+      const nowUTC = Date.now() + new Date().getTimezoneOffset()*60000;
+      const now = new Date(nowUTC + 19800000);
+      const h = now.getHours()%12, m = now.getMinutes(), s = now.getSeconds();
+      document.getElementById('hour').style.transform   = `rotate(${(h + m/60)*30}deg)`;
+      document.getElementById('minute').style.transform = `rotate(${(m + s/60)*6}deg)`;
+      document.getElementById('second').style.transform = `rotate(${s*6}deg)`;
+
+      const total = now.getHours()*60 + now.getMinutes() + s/60;
+      activities.forEach(a => a.el.classList.toggle('current', total >= a.start && total < a.end));
+    }
+    setInterval(update,1000);
+    update();
   </script>
 </body>
 </html>
